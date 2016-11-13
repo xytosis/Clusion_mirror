@@ -56,10 +56,10 @@ import org.apache.poi.xssf.extractor.XSSFExcelExtractor;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.xmlbeans.XmlException;
+import org.crypto.image.ImageLabeler;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
@@ -75,7 +75,7 @@ public class TextExtractPar implements Serializable {
 	// association between the keyword and documents that contain the keyword
 
 	Multimap<String, String> lookup1 = ArrayListMultimap.create();
-	static Multimap<String, String> lp1 = ArrayListMultimap.create();
+	public static Multimap<String, String> lp1 = ArrayListMultimap.create();
 
 	// lookup2 stores the document identifier (title) and the keywords contained
 	// in this document
@@ -306,17 +306,32 @@ public class TextExtractPar implements Serializable {
 
 			// ***********************************************************************************************//
 
-			///////////////////// Media Files such as gif, jpeg, .wmv, .mpeg,
+			///////////////////// Video Files such as gif, .wmv, .mpeg,
 			///////////////////// .mp4 /////////////////////////////
 
 			// ***********************************************************************************************//
 
-			else if (file.getName().endsWith(".gif") && file.getName().endsWith(".jpeg")
-					&& file.getName().endsWith(".wmv") && file.getName().endsWith(".mpeg")
-					&& file.getName().endsWith(".mp4")) {
+			else if (file.getName().endsWith(".gif")
+					|| file.getName().endsWith(".wmv") || file.getName().endsWith(".mpeg")
+					|| file.getName().endsWith(".mp4")) {
 
 				lines.add(file.getName());
 
+			}
+
+			// ***********************************************************************************************//
+
+			///////////////////// Picture Files (.jpeg and .png)
+			///////////////////// /////////////////////////////
+
+			// ***********************************************************************************************//
+
+			else if (file.getName().endsWith(".jpg") || file.getName().endsWith(".jpeg")
+					|| file.getName().endsWith(".png")) {
+				// here we use alchemy vision to extract the keywords from the images
+				ImageLabeler labeler = new ImageLabeler("736d280b7e12125d10b827c2f9431a333ef9ebbb");
+				List<String> keywords = labeler.getKeywords(file);
+                lines.add(String.join(" ", keywords));
 			}
 
 			// ***********************************************************************************************//
