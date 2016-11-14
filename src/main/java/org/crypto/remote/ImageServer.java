@@ -5,6 +5,7 @@ import org.crypto.sse.MMGlobal;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 
 /**
  * This class should be run on a remote server, the client should stream images to it
@@ -14,6 +15,9 @@ public class ImageServer {
     private int port;
     private ServerSocket serverSock;
     private MMGlobal twolev;
+    private Socket sock;
+    private ObjectInputStream in;
+    private ObjectOutputStream out;
 
     public ImageServer(int port) {
         this.port = port;
@@ -30,13 +34,13 @@ public class ImageServer {
     public void runSetup() {
         // we do the initial "handshake", where we send over the serialized data structure
         try {
-            Socket sock = serverSock.accept();
+            this.sock = serverSock.accept();
             try {
                 InputStream input  = sock.getInputStream();
+                this.in = new ObjectInputStream(input);
                 OutputStream output = sock.getOutputStream();
-                ObjectInputStream in = new ObjectInputStream(input);
+                this.out = new ObjectOutputStream(output);
                 this.twolev = (MMGlobal) in.readObject();
-                sock.close();
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (ClassNotFoundException e) {
@@ -53,11 +57,10 @@ public class ImageServer {
     public void runQuery() {
         try {
             while (true) {
-                Socket sock = serverSock.accept();
-                InputStream input = sock.getInputStream();
-                ObjectInputStream in = new ObjectInputStream(input);
                 byte[][] token = (byte[][]) in.readObject();
-                System.out.println(twolev.testSI(token, twolev.getDictionary(), twolev.getArray()));
+                List<String> files = twolev.testSI(token, twolev.getDictionary(), twolev.getArray());
+                out.writeObject(files);
+                out.flush();
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -15,6 +15,9 @@ public class ImageClient {
     private String host;
     private int port;
     private List<byte[]> listSK;
+    private Socket sock;
+    private ObjectInputStream in;
+    private ObjectOutputStream out;
 
     public ImageClient(String host, int port) {
         this.port = port;
@@ -23,28 +26,29 @@ public class ImageClient {
 
     public void runSetup() {
         try {
-            Socket sock = new Socket(host, port);
+            this.sock = new Socket(host, port);
             // construct a twolev
             MMGlobal twolev = setupTwoLev();
             // send this over the network
-            ObjectOutputStream output = new ObjectOutputStream(sock.getOutputStream());
-            output.writeObject(twolev);
-            sock.close();
+            this.out = new ObjectOutputStream(sock.getOutputStream());
+            this.in = new ObjectInputStream(sock.getInputStream());
+            out.writeObject(twolev);
+            out.flush();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void runQuery() throws IOException {
+    public void runQuery() throws Exception {
         while (true) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Enter your query :");
             String query = reader.readLine();
             byte[][] token = MMGlobal.genToken(listSK.get(0), query);
             Socket sock = new Socket(host, port);
-            ObjectOutputStream output = new ObjectOutputStream(sock.getOutputStream());
-            output.writeObject(token);
-            sock.close();
+            out.writeObject(token);
+            out.flush();
+            System.out.println((List<String>) in.readObject());
         }
     }
 
