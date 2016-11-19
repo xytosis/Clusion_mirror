@@ -330,7 +330,7 @@ public class CryptoPrimitives {
 			throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException,
 			NoSuchProviderException, NoSuchPaddingException, IOException {
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
-		byte[] input0 = readAlternateImpl(folderInput + inputFileName);
+		byte[] input0 = readAlternateImpl(folderInput + "/" + inputFileName);
 
 		// Concatenate the title with the text. The title should be at most 42
 		// characters with 2 characters marking the end of it
@@ -412,16 +412,11 @@ public class CryptoPrimitives {
 	public static void write(byte[] aInput, String aOutputFileName, String dirName) {
 		// creation of a directory if it is not created
 		// sanitizing the aOutputFileName
-
 		(new File(dirName)).mkdir();
 		try {
-			OutputStream output = null;
-			try {
-				output = new BufferedOutputStream(new FileOutputStream(dirName + "/" + aOutputFileName));
-				output.write(aInput);
-			} finally {
-				output.close();
-			}
+			OutputStream output = new FileOutputStream(dirName + "/" + aOutputFileName);
+			output.write(aInput);
+			output.close();
 		} catch (FileNotFoundException ex) {
 			System.out.println("File not found.");
 		} catch (IOException ex) {
