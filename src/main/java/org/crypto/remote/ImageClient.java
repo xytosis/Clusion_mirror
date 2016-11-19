@@ -1,12 +1,14 @@
 package org.crypto.remote;
 
+import com.google.common.collect.Multimap;
 import org.crypto.sse.*;
 
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+
+import static org.crypto.sse.TextExtractPar.lp1;
 
 public class ImageClient {
 
@@ -18,6 +20,8 @@ public class ImageClient {
     private ObjectOutputStream out;
     private String pathName;
     private byte[] encKey;
+    private Map<String, String> randomToName;
+    private Map<String, String> nameToRandom;
 
     public ImageClient(String host, int port) {
         this.port = port;
@@ -85,7 +89,7 @@ public class ImageClient {
             for (File file : files) {
                 byte[] contents = Files.readAllBytes(file.toPath());
                 String name = file.getName();
-                out.writeObject(new EncFile(name, contents));
+                out.writeObject(new EncFile(nameToRandom.get(name), contents));
                 out.flush();
             }
         } catch (Exception e) {
@@ -100,6 +104,44 @@ public class ImageClient {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * We generate random names to files, and then change all the file names
+     * in the multimap to hide the response
+     * @param lp1
+     * @return
+     */
+    public void hideFileNames(List<String> filenames, Multimap<String, String> lp1) {
+        this.nameToRandom = new HashMap<>();
+        this.randomToName = new HashMap<>();
+        for (String name: filenames) {
+            String randName = randomString();
+            nameToRandom.put(name, randName);
+            randomToName.put(randName, name);
+        }
+        for (String key : lp1.keySet()) {
+            Collection<String> hiding = new ArrayList<>();
+            for (String s : lp1.get(key)) {
+                hiding.add(nameToRandom.get(s));
+            }
+            lp1.replaceValues(key, hiding);
+        }
+    }
+
+    /**
+     * Generate a 10 character alphanumeric string
+     * @return
+     */
+    private String randomString() {
+        String chars = "abcdefghijklmnopqrstuvwxyz1234567890";
+        StringBuilder stringBuilder = new StringBuilder();
+        Random rnd = new Random();
+        while (stringBuilder.length() < 10) {
+            int index = rnd.nextInt(chars.length());
+            stringBuilder.append(chars.charAt(index));
+        }
+        return stringBuilder.toString();
     }
 
     public MMGlobal setupTwoLev() throws Exception {
@@ -133,9 +175,14 @@ public class ImageClient {
         int smallBlock = 100;
         int dataSize = 10000;
 
+        // obfuscate file names in multimap
+        List<String> fileNames = new ArrayList<>();
+        listOfFile.forEach(f -> fileNames.add(f.getName()));
+        hideFileNames(fileNames, lp1);
+
         // Construction of the global multi-map
         System.out.println("\nBeginning of Global MM creation \n");
-        return MMGlobal.constructEMMParGMM(listSK.get(0), TextExtractPar.lp1, bigBlock, smallBlock,
+        return MMGlobal.constructEMMParGMM(listSK.get(0), lp1, bigBlock, smallBlock,
                 dataSize);
     }
 
@@ -168,7 +215,7 @@ public class ImageClient {
 
         RH2Lev.master = sk;
 
-        RH2Lev twolev	=	RH2Lev.constructEMMParGMM(sk, TextExtractPar.lp1, bigBlock, smallBlock, dataSize);
+        RH2Lev twolev	=	RH2Lev.constructEMMParGMM(sk, lp1, bigBlock, smallBlock, dataSize);
     }
 
     public static void main(String[] args) {
