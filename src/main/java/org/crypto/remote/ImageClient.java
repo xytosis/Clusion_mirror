@@ -28,14 +28,15 @@ public class ImageClient {
         this.host = host;
     }
 
-    public void runSetup() {
+    public void setup2Lev() {
         try {
             // construct a twolev
-            MMGlobal twolev = setupTwoLev();
+            MMGlobal twolev = constructTwoLev();
             // send this over the network
-            this.sock = new Socket(host, port);
-            this.out = new ObjectOutputStream(sock.getOutputStream());
-            this.in = new ObjectInputStream(sock.getInputStream());
+            connectToServer();
+            // tell the server we're going to be using 2lev
+            out.writeObject("2lev");
+            out.flush();
             encryptFiles(pathName);
             sendFiles("temp");
             out.writeObject(twolev);
@@ -45,7 +46,24 @@ public class ImageClient {
         }
     }
 
-    public void runQuery() throws Exception {
+    public void setupRH2Lev() {
+        try {
+            // construct a 2lev rh
+            RH2Lev rh2Lev = constructRHTwoLev();
+            // send this over the network
+            connectToServer();
+            out.writeObject("rh2lev");
+            out.flush();
+            encryptFiles(pathName);
+            sendFiles("temp");
+            out.writeObject(rh2Lev);
+            out.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void run2levQuery() throws Exception {
         while (true) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Enter your query :");
@@ -97,13 +115,27 @@ public class ImageClient {
         }
     }
 
-    public void run() {
+    public void run2lev() {
         try {
-            runSetup();
-            runQuery();
+            setup2Lev();
+            run2levQuery();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void runrh2lev() {
+        try {
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void connectToServer() throws IOException {
+        this.sock = new Socket(host, port);
+        this.out = new ObjectOutputStream(sock.getOutputStream());
+        this.in = new ObjectInputStream(sock.getInputStream());
     }
 
     /**
@@ -144,7 +176,7 @@ public class ImageClient {
         return stringBuilder.toString();
     }
 
-    public MMGlobal setupTwoLev() throws Exception {
+    public MMGlobal constructTwoLev() throws Exception {
         BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
 
         System.out.println("Enter your password :");
@@ -186,7 +218,7 @@ public class ImageClient {
                 dataSize);
     }
 
-    public void setupRHTwoLev() throws Exception {
+    public RH2Lev constructRHTwoLev() throws Exception {
         BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
 
         System.out.println("Enter your password :");
@@ -214,12 +246,26 @@ public class ImageClient {
         System.out.println("\nBeginning of Global MM creation \n");
 
         RH2Lev.master = sk;
-
-        RH2Lev twolev	=	RH2Lev.constructEMMParGMM(sk, lp1, bigBlock, smallBlock, dataSize);
+        RH2Lev rh2Lev = RH2Lev.constructEMMParGMM(sk, lp1, bigBlock, smallBlock, dataSize);
+        RH2Lev.master = null; // erase sk
+        return rh2Lev;
     }
 
     public static void main(String[] args) {
-        new ImageClient("localhost", 8080).run();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev: ");
+            String response = reader.readLine();
+            if (response.equals("1")) {
+                new ImageClient("localhost", 8080).run2lev();
+            } else if (response.equals("2")) {
+
+            } else {
+                System.out.println("Incorrect response");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }

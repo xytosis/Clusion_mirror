@@ -32,25 +32,16 @@ public class ImageServer {
     /**
      * Gets the index
      */
-    public void runSetup() {
+    public void run2levSetup() {
         // we do the initial "handshake", where we send over the encrypted files and serialized data structure
         try {
-            this.sock = serverSock.accept();
-            try {
-                InputStream input  = sock.getInputStream();
-                this.in = new ObjectInputStream(input);
-                OutputStream output = sock.getOutputStream();
-                this.out = new ObjectOutputStream(output);
-                getFiles();
-                this.twolev = (MMGlobal) in.readObject();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ClassNotFoundException e) {
-                System.out.println("class not found");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            getFiles();
+            this.twolev = (MMGlobal) in.readObject();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            System.out.println("class not found");
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -72,7 +63,7 @@ public class ImageServer {
     /**
      * Runs the query phase
      */
-    public void runQuery() {
+    public void run2levQuery() {
         try {
             while (true) {
                 byte[][] token = (byte[][]) in.readObject();
@@ -94,12 +85,29 @@ public class ImageServer {
         }
     }
 
+    public String doHandShake() throws IOException, ClassNotFoundException {
+        this.sock = serverSock.accept();
+        InputStream input  = sock.getInputStream();
+        this.in = new ObjectInputStream(input);
+        OutputStream output = sock.getOutputStream();
+        this.out = new ObjectOutputStream(output);
+        return (String) in.readObject();
+    }
+
     /**
      * Runs the server
      */
     public void run() {
-        runSetup();
-        runQuery();
+        try {
+            String scheme = doHandShake();
+            if (scheme.equals("2lev")) {
+                run2levSetup();
+                run2levQuery();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
