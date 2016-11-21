@@ -1,6 +1,7 @@
 package org.crypto.remote;
 
 import org.crypto.sse.MMGlobal;
+import org.crypto.sse.RH2Lev;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -19,6 +20,7 @@ public class ImageServer {
     private Socket sock;
     private ObjectInputStream in;
     private ObjectOutputStream out;
+    private RH2Lev rh2Lev;
 
     public ImageServer(int port) {
         this.port = port;
@@ -85,6 +87,36 @@ public class ImageServer {
         }
     }
 
+    public void runrh2levSetup() {
+        try {
+            getFiles();
+            this.rh2Lev = (RH2Lev) in.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void runrh2levQuery() {
+        try {
+            while (true) {
+                byte[] token1 = (byte[]) in.readObject();
+                byte[][] token2 = (byte[][]) in.readObject();
+                List<String> files = rh2Lev.resolve(token1,
+                        rh2Lev.testSI(token2, rh2Lev.getDictionary(), rh2Lev.getArray()));
+                out.writeObject(new Integer(files.size()));
+                out.flush();
+                // send over the files
+                for (String filename : files) {
+                    File file = new File("encrypted/" + filename);
+                    out.writeObject(new EncFile(file.getName(), Files.readAllBytes(file.toPath())));
+                    out.flush();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public String doHandShake() throws IOException, ClassNotFoundException {
         this.sock = serverSock.accept();
         InputStream input  = sock.getInputStream();
@@ -103,6 +135,9 @@ public class ImageServer {
             if (scheme.equals("2lev")) {
                 run2levSetup();
                 run2levQuery();
+            } else if (scheme.equals("rh2lev")) {
+                runrh2levSetup();
+                runrh2levQuery();
             }
 
         } catch (Exception e) {

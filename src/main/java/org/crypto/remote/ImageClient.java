@@ -22,6 +22,7 @@ public class ImageClient {
     private byte[] encKey;
     private Map<String, String> randomToName;
     private Map<String, String> nameToRandom;
+    private byte[] rh2levsk;
 
     public ImageClient(String host, int port) {
         this.port = port;
@@ -79,6 +80,25 @@ public class ImageClient {
         }
     }
 
+    public void runrh2levQuery() throws Exception {
+        while (true) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            System.out.println("Enter your query :");
+            String query = reader.readLine();
+            byte[] token1 = CryptoPrimitives.generateCmac(this.rh2levsk, 3+new String());
+            byte[][] token2 = MMGlobal.genToken(this.rh2levsk, query);
+            out.writeObject(token1);
+            out.flush();
+            out.writeObject(token2);
+            out.flush();
+            Integer numFiles = (Integer) in.readObject();
+            for (int i = 0; i < numFiles; i++) {
+                EncFile f = (EncFile) in.readObject();
+                CryptoPrimitives.decryptAES_CTR("query_output", f.contents, encKey);
+            }
+        }
+    }
+
     public void encryptFiles(String directory) {
         File folder = new File(directory);
         File[] files = folder.listFiles();
@@ -126,7 +146,8 @@ public class ImageClient {
 
     public void runrh2lev() {
         try {
-
+            setupRH2Lev();
+            runrh2levQuery();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -225,12 +246,19 @@ public class ImageClient {
 
         String pass	=	keyRead.readLine();
 
-        byte[] sk	=	MMGlobal.keyGenSI(256, pass, "salt/salt", 100);
+        this.rh2levsk = MMGlobal.keyGenSI(256, pass, "salt/salt", 100);
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
 
+        // set up the key we use to encrypt the files
+        this.encKey = new byte[16];
+        byte[] temp = this.listSK.get(1);
+        for (int i = 0; i < 16; i++) {
+            encKey[i] = temp[i];
+        }
 
         System.out.println("Enter the relative path name of the folder that contains the files to make searchable");
 
-        String pathName	=	keyRead.readLine();
+        this.pathName = keyRead.readLine();
 
         ArrayList<File> listOfFile=new ArrayList<File>();
         TextProc.listf(pathName, listOfFile);
@@ -242,11 +270,16 @@ public class ImageClient {
         int smallBlock	=	100;
         int dataSize	=	10000;
 
+        // obfuscate file names in multimap
+        List<String> fileNames = new ArrayList<>();
+        listOfFile.forEach(f -> fileNames.add(f.getName()));
+        hideFileNames(fileNames, lp1);
+
         //Construction of the global multi-map
         System.out.println("\nBeginning of Global MM creation \n");
 
-        RH2Lev.master = sk;
-        RH2Lev rh2Lev = RH2Lev.constructEMMParGMM(sk, lp1, bigBlock, smallBlock, dataSize);
+        RH2Lev.master = this.rh2levsk;
+        RH2Lev rh2Lev = RH2Lev.constructEMMParGMM(this.rh2levsk, lp1, bigBlock, smallBlock, dataSize);
         RH2Lev.master = null; // erase sk
         return rh2Lev;
     }
@@ -259,7 +292,7 @@ public class ImageClient {
             if (response.equals("1")) {
                 new ImageClient("localhost", 8080).run2lev();
             } else if (response.equals("2")) {
-
+                new ImageClient("localhost", 8080).runrh2lev();
             } else {
                 System.out.println("Incorrect response");
             }
