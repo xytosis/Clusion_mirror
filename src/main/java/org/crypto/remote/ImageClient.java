@@ -26,6 +26,7 @@ public class ImageClient {
     private Map<String, String> nameToRandom;
     private byte[] rh2levsk;
     private IEX2Lev iex2Lev;
+    private IEXRH2Lev iexrh2Lev;
 
     public ImageClient(String host, int port) {
         this.port = port;
@@ -78,6 +79,21 @@ public class ImageClient {
             encryptFiles(pathName);
             sendFiles("temp");
             out.writeObject(iex2Lev);
+            out.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setupIEXRH2Lev() {
+        try {
+            this.iexrh2Lev = constructIEXRH2Lev();
+            connectToServer();
+            out.writeObject("iexrh2lev");
+            out.flush();
+            encryptFiles(pathName);
+            sendFiles("temp");
+            out.writeObject(iexrh2Lev);
             out.flush();
         } catch (Exception e) {
             e.printStackTrace();
@@ -170,6 +186,59 @@ public class ImageClient {
         }
     }
 
+    public void runIEXRH2LevQuery() throws Exception {
+        BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
+        while (true) {
+            System.out.println("How many disjunctions? ");
+            int numDisjunctions = Integer.parseInt(keyRead.readLine());
+
+            // Storing the CNF form
+            String[][] bool = new String[numDisjunctions][];
+            for (int i = 0; i < numDisjunctions; i++) {
+                System.out.println("Enter the keywords of the disjunctions ");
+                bool[i] = keyRead.readLine().split(" ");
+            }
+
+            // Generate the IEX token
+            List<String> searchBol = new ArrayList<String>();
+            for (int i = 0; i < bool[0].length; i++) {
+                searchBol.add(bool[0][i]);
+            }
+
+            Set<String> tmpBol = IEXRH2Lev.testDIS(IEXRH2Lev.genToken(listSK, searchBol), this.iexrh2Lev);
+            List<List<TokenDIS>> allTokenTMP = new ArrayList<>();
+            for (int i = 1; i < bool.length; i++) {
+                for (int k = 0; k < bool[0].length; k++) {
+                    List<String> searchTMP = new ArrayList<String>();
+                    searchTMP.add(bool[0][k]);
+                    for (int r = 0; r < bool[i].length; r++) {
+                        searchTMP.add(bool[i][r]);
+                    }
+                    allTokenTMP.add(IEXRH2Lev.genToken(listSK, searchTMP));
+                }
+            }
+            // now we send these two things over to the server
+            out.writeObject(tmpBol);
+            out.flush();
+            out.writeObject(allTokenTMP);
+            out.flush();
+            out.writeObject(CryptoPrimitives.generateCmac(listSK.get(0), 3 + new String()));
+            out.flush();
+            out.writeObject(new Integer(bool.length));
+            out.flush();
+            out.writeObject(new Integer(bool[0].length));
+            out.flush();
+
+            // now we read in the files we have queried
+            Integer numFiles = (Integer) in.readObject();
+            for (int i = 0; i < numFiles; i++) {
+                EncFile f = (EncFile) in.readObject();
+                CryptoPrimitives.decryptAES_CTR("query_output", f.contents, encKey);
+            }
+
+        }
+    }
+
     public void encryptFiles(String directory) {
         File folder = new File(directory);
         File[] files = folder.listFiles();
@@ -228,6 +297,15 @@ public class ImageClient {
         try {
             setupIEX2Lev();
             runIEX2LevQuery();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void runiexrh2lev() {
+        try {
+            setupIEXRH2Lev();
+            runIEXRH2LevQuery();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -380,10 +458,6 @@ public class ImageClient {
 
         this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
 
-        long startTime = System.nanoTime();
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter("logs.txt", true));
-
         System.out.println("Enter the relative path name of the folder that contains the files to make searchable: ");
 
         this.pathName = keyRead.readLine();
@@ -413,10 +487,52 @@ public class ImageClient {
         return IEX2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
     }
 
+    public IEXRH2Lev constructIEXRH2Lev() throws Exception {
+        BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Enter your password :");
+
+        String pass = keyRead.readLine();
+
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
+        this.encKey = new byte[16];
+        byte[] temp = this.listSK.get(1);
+        for (int i = 0; i < 16; i++) {
+            encKey[i] = temp[i];
+        }
+
+        System.out.println("Enter the relative path name of the folder that contains the files to make searchable");
+
+        this.pathName = keyRead.readLine();
+
+        // Creation of different files based on selectivity
+        // Selectivity was computed in an inclusive way. All files that include
+        // x(i+1) include necessarily xi
+        // This is used for benchmarking and can be taken out of the code
+
+        ArrayList<File> listOfFile = new ArrayList<File>();
+        TextProc.listf(pathName, listOfFile);
+
+        TextProc.TextProc(false, pathName);
+
+        int bigBlock = 1000;
+        int smallBlock = 100;
+
+
+        RH2Lev.master = listSK.get(0);
+        List<String> fileNames = new ArrayList<>();
+        listOfFile.forEach(f -> fileNames.add(f.getName()));
+        hideFileNames(fileNames, TextExtractPar.lp1, TextExtractPar.lp2);
+        System.out.println(TextExtractPar.lp1);
+        System.out.println(TextExtractPar.lp2);
+
+        return IEXRH2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
+    }
+
     public static void main(String[] args) {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev (3) iex2lev: ");
+            System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev (3) iex2lev (4) iexrh2lev: ");
             String response = reader.readLine();
             ImageClient cli = new ImageClient("localhost", 8080);
             if (response.equals("1")) {
@@ -425,6 +541,8 @@ public class ImageClient {
                 cli.runrh2lev();
             } else if (response.equals("3")) {
                 cli.runiex2lev();
+            } else if (response.equals("4")) {
+                cli.runiexrh2lev();
             } else {
                 System.out.println("Incorrect response");
             }
