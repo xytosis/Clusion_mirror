@@ -1,13 +1,18 @@
 package org.crypto.remote;
 
+import org.crypto.sse.IEX2Lev;
 import org.crypto.sse.MMGlobal;
 import org.crypto.sse.RH2Lev;
+import org.crypto.sse.TokenDIS;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class should be run on a remote server, the client should stream images to it
@@ -21,6 +26,7 @@ public class ImageServer {
     private ObjectInputStream in;
     private ObjectOutputStream out;
     private RH2Lev rh2Lev;
+    private IEX2Lev disj;
 
     public ImageServer(int port) {
         this.port = port;
@@ -117,6 +123,79 @@ public class ImageServer {
         }
     }
 
+    public void runIEX2LevSetup() {
+        try {
+            getFiles();
+            this.disj = (IEX2Lev) in.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void runIEX2LevQuery() {
+        try {
+            while (true) {
+                Set<String> tmpBol = (Set<String>) in.readObject();
+                List<List<TokenDIS>> allTokenTMP = (List<List<TokenDIS>>) in.readObject();
+                Integer boolLength = (Integer) in.readObject();
+                Integer bool0Length = (Integer) in.readObject();
+                int tok = 0;
+                for (int i = 1; i < boolLength; i++) {
+                    Set<String> finalResult = new HashSet<>();
+                    for (int k = 0; k < bool0Length; k++) {
+                        List<TokenDIS> tokenTMP = allTokenTMP.get(tok);
+
+                        Set<String> result = new HashSet<String>(MMGlobal.testSI(tokenTMP.get(0).getTokenMMGlobal(),
+                                disj.getGlobalMM().getDictionary(), disj.getGlobalMM().getArray()));
+                        if (!(tmpBol.size() == 0)) {
+                            List<Integer> temp = new ArrayList<Integer>(
+                                    disj.getDictionaryForMM().get(new String(tokenTMP.get(0).getTokenDIC())));
+
+                            if (!(temp.size() == 0)) {
+                                int pos = temp.get(0);
+
+                                for (int j = 0; j < tokenTMP.get(0).getTokenMMLocal().size(); j++) {
+
+                                    Set<String> temporary = new HashSet<String>();
+                                    List<String> tempoList = MMGlobal.testSI(tokenTMP.get(0).getTokenMMLocal().get(j),
+                                            disj.getLocalMultiMap()[pos].getDictionary(),
+                                            disj.getLocalMultiMap()[pos].getArray());
+
+                                    if (!(tempoList == null)) {
+                                        temporary = new HashSet<String>(
+                                                MMGlobal.testSI(tokenTMP.get(0).getTokenMMLocal().get(j),
+                                                        disj.getLocalMultiMap()[pos].getDictionary(),
+                                                        disj.getLocalMultiMap()[pos].getArray()));
+                                    }
+
+                                    finalResult.addAll(temporary);
+
+                                    if (tmpBol.isEmpty()) {
+                                        break;
+                                    }
+
+                                }
+                            }
+
+                        }
+                        tok++;
+                    }
+                    tmpBol.retainAll(finalResult);
+                }
+                // send over the files
+                out.writeObject(new Integer(tmpBol.size()));
+                out.flush();
+                for (String filename : tmpBol) {
+                    File file = new File("encrypted/" + filename);
+                    out.writeObject(new EncFile(file.getName(), Files.readAllBytes(file.toPath())));
+                    out.flush();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public String doHandShake() throws IOException, ClassNotFoundException {
         this.sock = serverSock.accept();
         InputStream input  = sock.getInputStream();
@@ -138,6 +217,9 @@ public class ImageServer {
             } else if (scheme.equals("rh2lev")) {
                 runrh2levSetup();
                 runrh2levQuery();
+            } else if (scheme.equals("iex2lev")) {
+                runIEX2LevSetup();
+                runIEX2LevQuery();
             }
 
         } catch (Exception e) {

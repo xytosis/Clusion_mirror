@@ -81,7 +81,7 @@ public class TextExtractPar implements Serializable {
 	// in this document
 
 	Multimap<String, String> lookup2 = ArrayListMultimap.create();
-	static Multimap<String, String> lp2 = ArrayListMultimap.create();
+	public static Multimap<String, String> lp2 = ArrayListMultimap.create();
 
 	static int counter = 0;
 
@@ -329,7 +329,7 @@ public class TextExtractPar implements Serializable {
 			else if (file.getName().endsWith(".jpg") || file.getName().endsWith(".jpeg")
 					|| file.getName().endsWith(".png")) {
 				// here we use alchemy vision to extract the keywords from the images
-				ImageLabeler labeler = new ImageLabeler("736d280b7e12125d10b827c2f9431a333ef9ebbb");
+				ImageLabeler labeler = new ImageLabeler("7b2346f5525b0885b24032c32f591cb77cbe0b4e");
 				List<String> keywords = labeler.getKeywords(file);
                 lines.add(String.join(" ", keywords));
 			}

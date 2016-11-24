@@ -168,3 +168,13 @@ Knudsen and C. Namprempre.
 [Goh03]: https://eprint.iacr.org/2003/216.pdf
 [ABLMTY13]: https://eprint.iacr.org/2013/790.pdf
 [BBKN07]: https://cseweb.ucsd.edu/~mihir/papers/olc.pdf
+
+# TODO
+1. Make the encrypted data structure encrypted in the server. Whenever the client wants to search, they have to use the
+same password (make sure to save the salt and stuff)
+
+2. Clusion has many static variables. Make sure they will get serialized.
+
+3. Next, work on IEX2lev and IEXRH2lev (boolean queries)
+
+4. Make this work on remote server
