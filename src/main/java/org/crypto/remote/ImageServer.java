@@ -25,6 +25,7 @@ public class ImageServer {
     private RH2Lev rh2Lev;
     private IEX2Lev disj;
     private IEXRH2Lev disjrh;
+    private String scheme;
 
     public ImageServer(int port) {
         this.port = port;
@@ -277,23 +278,57 @@ public class ImageServer {
      */
     public void run() {
         try {
-            String scheme = doHandShake();
-            if (scheme.equals("2lev")) {
-                run2levSetup();
-                run2levQuery();
-            } else if (scheme.equals("rh2lev")) {
-                runrh2levSetup();
-                runrh2levQuery();
-            } else if (scheme.equals("iex2lev")) {
-                runIEX2LevSetup();
-                runIEX2LevQuery();
-            } else if (scheme.equals("iexrh2lev")) {
-                runIEXRH2LevSetup();
-                runIEXRH2LevQuery();
+            this.scheme = doHandShake();
+            switch (scheme) {
+                case "2lev":
+                    run2levSetup();
+                    persist();
+                    run2levQuery();
+                    break;
+                case "rh2lev":
+                    runrh2levSetup();
+                    persist();
+                    runrh2levQuery();
+                    break;
+                case "iex2lev":
+                    runIEX2LevSetup();
+                    persist();
+                    runIEX2LevQuery();
+                    break;
+                case "iexrh2lev":
+                    runIEXRH2LevSetup();
+                    persist();
+                    runIEXRH2LevQuery();
+                    break;
+                default:
+                    System.out.println("could not find valid scheme");
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Persists the EDS into memory
+     */
+    public void persist() throws FileNotFoundException, IOException {
+        ObjectOutputStream fout = new ObjectOutputStream(new FileOutputStream(scheme));
+        switch (scheme) {
+            case "2lev":
+                fout.writeObject(this.twolev);
+                break;
+            case "rh2lev":
+                fout.writeObject(this.rh2Lev);
+                break;
+            case "iex2lev":
+                fout.writeObject(this.disj);
+                break;
+            case "iexrh2lev":
+                fout.writeObject(this.disjrh);
+                break;
+            default:
+                System.out.println("could not find valid scheme");
         }
     }
 
