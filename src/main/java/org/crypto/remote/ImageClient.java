@@ -284,6 +284,28 @@ public class ImageClient {
         }
     }
 
+    /**
+     * The server is running a pre-existing two lev
+     */
+    public void login2lev() throws Exception {
+        BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("Enter your password :");
+
+        String pass = keyRead.readLine();
+
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
+
+        // set up the key we use to encrypt the files
+        this.encKey = new byte[16];
+        byte[] temp = this.listSK.get(1);
+        for (int i = 0; i < 16; i++) {
+            encKey[i] = temp[i];
+        }
+
+        connectToServer();
+        run2levQuery();
+    }
+
     public void runrh2lev() {
         try {
             setupRH2Lev();
@@ -370,7 +392,7 @@ public class ImageClient {
 
         String pass = keyRead.readLine();
 
-        this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
 
         // set up the key we use to encrypt the files
         this.encKey = new byte[16];
@@ -535,18 +557,37 @@ public class ImageClient {
             System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev (3) iex2lev (4) iexrh2lev: ");
             String response = reader.readLine();
             ImageClient cli = new ImageClient("localhost", 8080);
-            if (response.equals("1")) {
-                cli.run2lev();
-            } else if (response.equals("2")) {
-                cli.runrh2lev();
-            } else if (response.equals("3")) {
-                cli.runiex2lev();
-            } else if (response.equals("4")) {
-                cli.runiexrh2lev();
+            System.out.println("Is the server running existing EDS - (1) no (2) yes");
+            String mode = reader.readLine();
+            if (mode.equals("1")) {
+                if (response.equals("1")) {
+                    cli.run2lev();
+                } else if (response.equals("2")) {
+                    cli.runrh2lev();
+                } else if (response.equals("3")) {
+                    cli.runiex2lev();
+                } else if (response.equals("4")) {
+                    cli.runiexrh2lev();
+                } else {
+                    System.out.println("Incorrect response");
+                }
+            } else if (mode.equals("2")) {
+                if (response.equals("1")) {
+                    cli.login2lev();
+                } else if (response.equals("2")) {
+
+                } else if (response.equals("3")) {
+
+                } else if (response.equals("4")) {
+
+                } else {
+                    System.out.println("Incorrect response");
+                }
             } else {
-                System.out.println("Incorrect response");
+                System.out.println("Please choose (1) or (2)");
             }
-        } catch (IOException e) {
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

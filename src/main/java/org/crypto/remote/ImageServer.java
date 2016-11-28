@@ -265,12 +265,16 @@ public class ImageServer {
     }
 
     public String doHandShake() throws IOException, ClassNotFoundException {
+        acceptConnection();
+        return (String) in.readObject();
+    }
+
+    public void acceptConnection() throws IOException {
         this.sock = serverSock.accept();
         InputStream input  = sock.getInputStream();
         this.in = new ObjectInputStream(input);
         OutputStream output = sock.getOutputStream();
         this.out = new ObjectOutputStream(output);
-        return (String) in.readObject();
     }
 
     /**
@@ -309,10 +313,38 @@ public class ImageServer {
         }
     }
 
+    public void runFromFile(String scheme, String filepath) throws IOException, ClassNotFoundException {
+        ObjectInputStream input = new ObjectInputStream(new FileInputStream(filepath));
+        switch (scheme) {
+            case "1":
+                this.twolev = (MMGlobal) input.readObject();
+                acceptConnection();
+                run2levQuery();
+                break;
+            case "2":
+                this.rh2Lev = (RH2Lev) input.readObject();
+                acceptConnection();
+                runrh2levQuery();
+                break;
+            case "3":
+                this.disj = (IEX2Lev) input.readObject();
+                acceptConnection();
+                runIEX2LevQuery();
+                break;
+            case "4":
+                this.disjrh = (IEXRH2Lev) input.readObject();
+                acceptConnection();
+                runIEXRH2LevQuery();
+                break;
+            default:
+                System.out.println("could not find valid scheme");
+        }
+    }
+
     /**
      * Persists the EDS into memory
      */
-    public void persist() throws FileNotFoundException, IOException {
+    public void persist() throws IOException {
         ObjectOutputStream fout = new ObjectOutputStream(new FileOutputStream(scheme));
         switch (scheme) {
             case "2lev":
@@ -333,7 +365,21 @@ public class ImageServer {
     }
 
     public static void main(String[] args) {
-        new ImageServer(8080).run();
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            System.out.println("Enter directory of preloaded EDS or press enter to skip: ");
+            String resp = reader.readLine();
+            if (resp.isEmpty()) {
+                // run from scratch
+                new ImageServer(8080).run();
+            } else {
+                // load in a file and listen for queries
+                System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev (3) iex2lev (4) iexrh2lev: ");
+                new ImageServer(8080).runFromFile(reader.readLine(), resp);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }
