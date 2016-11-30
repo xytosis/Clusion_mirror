@@ -339,6 +339,7 @@ public class ImageServer {
             default:
                 System.out.println("could not find valid scheme");
         }
+        input.close();
     }
 
     /**
@@ -362,6 +363,7 @@ public class ImageServer {
             default:
                 System.out.println("could not find valid scheme");
         }
+        fout.close();
     }
 
     public static void main(String[] args) {

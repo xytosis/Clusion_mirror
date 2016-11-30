@@ -315,6 +315,26 @@ public class ImageClient {
         }
     }
 
+    public void loginrh2lev() throws Exception {
+        BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Enter your password :");
+
+        String pass	=	keyRead.readLine();
+
+        this.rh2levsk = MMGlobal.keyGenSI(256, pass, "salt/saltInvIX", 100);
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
+
+        // set up the key we use to encrypt the files
+        this.encKey = new byte[16];
+        byte[] temp = this.listSK.get(1);
+        for (int i = 0; i < 16; i++) {
+            encKey[i] = temp[i];
+        }
+        connectToServer();
+        runrh2levQuery();
+    }
+
     public void runiex2lev() {
         try {
             setupIEX2Lev();
@@ -324,6 +344,30 @@ public class ImageClient {
         }
     }
 
+    public void loginiex2lev(String filepath) throws Exception {
+        BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Enter your password :");
+
+        String pass = keyRead.readLine();
+
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
+
+        this.encKey = new byte[16];
+        byte[] temp = this.listSK.get(1);
+        for (int i = 0; i < 16; i++) {
+            encKey[i] = temp[i];
+        }
+
+        // load in the client side iex2lev
+        ObjectInputStream input = new ObjectInputStream(new FileInputStream(filepath));
+        this.iex2Lev = (IEX2Lev) input.readObject();
+        input.close();
+
+        connectToServer();
+        runIEX2LevQuery();
+    }
+
     public void runiexrh2lev() {
         try {
             setupIEXRH2Lev();
@@ -331,6 +375,29 @@ public class ImageClient {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void loginiexrh2lev(String filepath) throws Exception {
+        BufferedReader keyRead = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Enter your password :");
+
+        String pass = keyRead.readLine();
+
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
+        this.encKey = new byte[16];
+        byte[] temp = this.listSK.get(1);
+        for (int i = 0; i < 16; i++) {
+            encKey[i] = temp[i];
+        }
+
+        // load in the client side iexrh2lev
+        ObjectInputStream input = new ObjectInputStream(new FileInputStream(filepath));
+        this.iexrh2Lev = (IEXRH2Lev) input.readObject();
+        input.close();
+
+        connectToServer();
+        runIEXRH2LevQuery();
     }
 
     public void connectToServer() throws IOException {
@@ -419,6 +486,7 @@ public class ImageClient {
         List<String> fileNames = new ArrayList<>();
         listOfFile.forEach(f -> fileNames.add(f.getName()));
         hideFileNames(fileNames, lp1, TextExtractPar.lp2);
+        System.out.println(lp1);
 
         // Construction of the global multi-map
         System.out.println("\nBeginning of Global MM creation \n");
@@ -433,8 +501,8 @@ public class ImageClient {
 
         String pass	=	keyRead.readLine();
 
-        this.rh2levsk = MMGlobal.keyGenSI(256, pass, "salt/salt", 100);
-        this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
+        this.rh2levsk = MMGlobal.keyGenSI(256, pass, "salt/saltInvIX", 100);
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
 
         // set up the key we use to encrypt the files
         this.encKey = new byte[16];
@@ -478,7 +546,7 @@ public class ImageClient {
 
         String pass = keyRead.readLine();
 
-        this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
 
         System.out.println("Enter the relative path name of the folder that contains the files to make searchable: ");
 
@@ -506,7 +574,13 @@ public class ImageClient {
         int bigBlock = 1000;
         int smallBlock = 100;
 
-        return IEX2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
+        IEX2Lev iex =  IEX2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
+
+        // save the iex2lev construction to the client for future loading
+        ObjectOutputStream fout = new ObjectOutputStream(new FileOutputStream("iex2lev_client"));
+        fout.writeObject(iex);
+        fout.close();
+        return iex;
     }
 
     public IEXRH2Lev constructIEXRH2Lev() throws Exception {
@@ -516,7 +590,7 @@ public class ImageClient {
 
         String pass = keyRead.readLine();
 
-        this.listSK = IEX2Lev.keyGen(256, pass, "salt/salt", 100);
+        this.listSK = IEX2Lev.keyGen(256, pass, "salt/saltInvIX", 100);
         this.encKey = new byte[16];
         byte[] temp = this.listSK.get(1);
         for (int i = 0; i < 16; i++) {
@@ -548,7 +622,14 @@ public class ImageClient {
         System.out.println(TextExtractPar.lp1);
         System.out.println(TextExtractPar.lp2);
 
-        return IEXRH2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
+        IEXRH2Lev iexrh = IEXRH2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
+
+        // save the iex2lev construction to the client for future loading
+        ObjectOutputStream fout = new ObjectOutputStream(new FileOutputStream("iexrh2lev_client"));
+        fout.writeObject(iexrh);
+        fout.close();
+
+        return iexrh;
     }
 
     public static void main(String[] args) {
@@ -575,11 +656,13 @@ public class ImageClient {
                 if (response.equals("1")) {
                     cli.login2lev();
                 } else if (response.equals("2")) {
-
+                    cli.loginrh2lev();
                 } else if (response.equals("3")) {
-
+                    System.out.println("Enter the path to the clientside iex2lev");
+                    cli.loginiex2lev(reader.readLine());
                 } else if (response.equals("4")) {
-
+                    System.out.println("Enter the path to the clientside iexrh2lev");
+                    cli.loginiexrh2lev(reader.readLine());
                 } else {
                     System.out.println("Incorrect response");
                 }
