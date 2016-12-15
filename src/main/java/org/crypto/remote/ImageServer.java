@@ -367,17 +367,22 @@ public class ImageServer {
     }
 
     public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: enter port");
+            return;
+        }
         try {
+            int port = Integer.parseInt(args[0]);
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Enter directory of preloaded EDS or press enter to skip: ");
             String resp = reader.readLine();
             if (resp.isEmpty()) {
                 // run from scratch
-                new ImageServer(8080).run();
+                new ImageServer(port).run();
             } else {
                 // load in a file and listen for queries
                 System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev (3) iex2lev (4) iexrh2lev: ");
-                new ImageServer(8080).runFromFile(reader.readLine(), resp);
+                new ImageServer(port).runFromFile(reader.readLine(), resp);
             }
         } catch (Exception e) {
             e.printStackTrace();

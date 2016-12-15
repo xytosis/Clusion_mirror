@@ -414,6 +414,7 @@ public class ImageClient {
      */
     public void hideFileNames(List<String> filenames, Multimap<String, String> lp1,
                               Multimap<String, String> lp2) {
+        System.out.println(lp1);
         this.nameToRandom = new HashMap<>();
         this.randomToName = new HashMap<>();
         for (String name: filenames) {
@@ -486,7 +487,6 @@ public class ImageClient {
         List<String> fileNames = new ArrayList<>();
         listOfFile.forEach(f -> fileNames.add(f.getName()));
         hideFileNames(fileNames, lp1, TextExtractPar.lp2);
-        System.out.println(lp1);
 
         // Construction of the global multi-map
         System.out.println("\nBeginning of Global MM creation \n");
@@ -619,8 +619,6 @@ public class ImageClient {
         List<String> fileNames = new ArrayList<>();
         listOfFile.forEach(f -> fileNames.add(f.getName()));
         hideFileNames(fileNames, TextExtractPar.lp1, TextExtractPar.lp2);
-        System.out.println(TextExtractPar.lp1);
-        System.out.println(TextExtractPar.lp2);
 
         IEXRH2Lev iexrh = IEXRH2Lev.setupDISJ(listSK, TextExtractPar.lp1, TextExtractPar.lp2, bigBlock, smallBlock, 0);
 
@@ -633,11 +631,17 @@ public class ImageClient {
     }
 
     public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.println("Usage: enter host and port");
+            return;
+        }
         try {
+            String host = args[0];
+            int port = Integer.parseInt(args[1]);
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             System.out.println("Select the encryption scheme - (1) 2lev (2) rh2lev (3) iex2lev (4) iexrh2lev: ");
             String response = reader.readLine();
-            ImageClient cli = new ImageClient("localhost", 8080);
+            ImageClient cli = new ImageClient(host, port);
             System.out.println("Is the server running existing EDS - (1) no (2) yes");
             String mode = reader.readLine();
             if (mode.equals("1")) {

@@ -147,6 +147,31 @@ Below are Dependencies added via Maven (3.3.9 or above) , need not be downloaded
 
 Clusion was tested with Java version `1.7.0_75`.
 
+## AlchemyVision Integration and Remote Server
+
+Clusion is integrated with the AlchemyVision API in order to extract keywords from images. It is also augmented so that we can run the server and client on different machines and be able to transfer the EDS and encrypted files back and forth between the two. We also augment Clusion so that the server and client can persist their states so that upon a shutdown or restart, they do not have to run the setup step again.
+
+### Usage
+
+This section describe running the code via the command line. We first compile everything with `mvn package`. We then need to use the jar file WITHOUT all the dependencies added, and manually link to the dependenccies that maven downloaded. We cannot use the fat jar because the BouncyCastle dependency relies on it being signed, and packaging destroys the original signature.
+
+Thus, running the client should be like
+```
+java -cp "Clusion-1.0-SNAPSHOT.jar:MVN_DEPENDENCY_PATH/*" org.crypto.remote.ImageClient HOST PORT
+```
+where `MVN_DEPENDENCY_PATH` is the directory in which maven downloads dependency jars, `HOST` is the host and `PORT` is the port that the server is running on.
+
+Similarly, running the server should look like
+```
+java -cp "Clusion-1.0-SNAPSHOT.jar:MVN_DEPENDENCY_PATH/*" org.crypto.remote.ImageServer PORT
+```
+
+Once the server and client have started running, they will prompt the user to input a series of options for the type of session to run. It will ask the user if they want to start a new session or load in an existing session (every new session will be saved once it has started running), and what type of encryption scheme the user wants.
+
+When the options have been decided, if the user went with loading a previous scheme, the client will immediately start the query phase. If the user went with starting a new scheme, the client will take in a directory of files and index and encrypt them and send them to the server, and then will start the query phase.
+
+All the queries are saved in a folder in the current directory, and on the server side, all the encrypted images are also saved in a folder in the current directory.
+
 ## References
 
 1. \[[CJJJKRS14](https://eprint.iacr.org/2014/853.pdf)\]:  *Dynamic Searchable Encryption in Very-Large Databases: Data Structures and Implementation* by D. Cash, J. Jaeger, S. Jarecki, C. Jutla, H. Krawczyk, M. Rosu, M. Steiner.
